@@ -34,6 +34,7 @@ export interface SurverySaysContextProps {
   currentQuestion?: Question;
   currentQuestionId?: string;
   currentRound?: number;
+  currentState?: number;
 }
 
 export interface GameState {
@@ -57,33 +58,16 @@ function App() {
 
   const { db } = useContext(firebaseContext);
   const [currentRound, setRound] = useState<number | undefined>(undefined);
+  const [currentState, setState] = useState<number | undefined>(undefined);
   const [currentQuestionId, setQuestionId] = useState<string>();
   const [currentQuestion, setQuestion] = useState<Question>();
   const [questions, setQuestions] = useState<Question[]>([]);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(doc(db, "game", "state"), (snapshot) => {
-      const { round } = snapshot.data() as GameState;
+      const { round, state } = snapshot.data() as GameState;
       setRound(round);
-
-      // setQuestion(undefined);
-      // setQuestionId(undefined);
-
-      // const q = query(collection(db, "questions"), where("round", "==", round));
-
-      // getDocs(q).then((response) => {
-      //   const questionSet = new Set<Question>();
-      //   response.forEach((doc) => {
-      //     const question = doc.data() as Question;
-      //     // console.log(question);
-      //     questionSet.add(question);
-      //     if (question.active) {
-      //       setQuestion(question);
-      //       setQuestionId(doc.id);
-      //     }
-      //   });
-      //   setQuestions([...questionSet]);
-      // });
+      setState(state);
     });
 
     return () => {
@@ -97,8 +81,6 @@ function App() {
     setQuestion(undefined);
     setQuestionId(undefined);
 
-    console.log(currentRound);
-
     const questionQuery = query(
       collection(db, "questions"),
       where("round", "==", currentRound)
@@ -110,7 +92,6 @@ function App() {
 
         if (change.type === "added" || change.type === "modified") {
           if (question.active && question.round === currentRound) {
-            console.log("set", question);
             setQuestion(question);
             setQuestionId(change.doc.id);
           }
@@ -124,8 +105,6 @@ function App() {
         questionSet.add(question);
       });
 
-      console.log(questionSet);
-
       setQuestions([...questionSet]);
     });
 
@@ -134,32 +113,13 @@ function App() {
     };
   }, [currentRound]);
 
-  // useEffect(() => {
-  //   if (db) {
-  //     const q = query(
-  //       collection(db, "questions"),
-  //       where("round", "==", currentRound)
-  //     );
-
-  //     getDocs(q).then((response) => {
-  //       const questionSet = new Set<Question>();
-  //       response.forEach((doc) => {
-  //         const question = doc.data() as Question;
-  //         // console.log(question);
-  //         questionSet.add(question);
-  //         if (question.active) {
-  //           setQuestion(question);
-  //           setQuestionId(doc.id);
-  //         } else {
-  //           setQuestion(undefined);
-  //           setQuestionId(undefined);
-  //         }
-  //       });
-  //       console.log(questionSet);
-  //       setQuestions([...questionSet]);
-  //     });
-  //   }
-  // }, [currentRound]);
+  useEffect(() => {
+    const stateRef = doc(db, "game", "state");
+    onSnapshot(stateRef, (snapshot) => {
+      const state = snapshot.data();
+      setState(state?.state);
+    });
+  }, []);
 
   return (
     <div className="App">
@@ -169,6 +129,7 @@ function App() {
           currentQuestion,
           currentQuestionId,
           currentRound,
+          currentState,
         }}
       >
         <RouterProvider router={router} />
